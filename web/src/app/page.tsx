@@ -66,6 +66,12 @@ export default function Home() {
            return;
         }
         
+        if (filePath === outDir) {
+            setError('Cannot extract an archive directly onto itself!');
+            setIsLoading(false);
+            return;
+        }
+        
         const cmd = Command.sidecar('../../core/huffpack', ['unpack', filePath, outDir as string]);
         const res = await cmd.execute();
         
@@ -75,13 +81,25 @@ export default function Home() {
            setError(`Exit Code: ${res.code} | StdErr: ${res.stderr || 'EMPTY'} | StdOut: ${res.stdout || 'EMPTY'}`);
         }
       } else {
+        // Safely strip extensions (e.g. .pdf) off the original file name so the OS save dialog respects our .huff suffix
+        let baseName = fileName;
+        if (baseName.includes('.')) {
+             baseName = baseName.substring(0, baseName.lastIndexOf('.'));
+        }
+        
         // Output file selection
         const outFile = await save({
           filters: [{ name: 'HuffPack Archive', extensions: ['huff'] }],
-          defaultPath: fileName + (fileName.endsWith('.huff') ? '' : '.huff')
+          defaultPath: baseName + '.huff'
         });
         
         if (!outFile) {
+           setIsLoading(false);
+           return;
+        }
+        
+        if (outFile === filePath) {
+           setError('Cannot overwrite the original file! Choose a distinct output path.');
            setIsLoading(false);
            return;
         }
