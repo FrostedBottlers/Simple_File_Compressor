@@ -38,7 +38,7 @@ std::vector<uint8_t> Huffman::compress(const std::vector<uint8_t>& data) {
 
     for (uint8_t b : data) {
         const auto& ccode = codes[b];
-        writer.writeBits(ccode.code, ccode.length);
+        writer.writeBits(ccode.code);
     }
 
     writer.flush();
@@ -96,17 +96,30 @@ std::unordered_map<uint8_t, Huffman::CanonicalCode> Huffman::generateCanonicalCo
     });
 
     std::unordered_map<uint8_t, CanonicalCode> codes;
-    uint32_t current_code = 0;
+    std::vector<bool> current_code;
     int prev_length = sorted_lengths.empty() ? 0 : sorted_lengths[0].second;
 
     for (const auto& pair : sorted_lengths) {
         uint8_t symbol = pair.first;
         int length = pair.second;
 
-        current_code <<= (length - prev_length);
+        while (current_code.size() < length) {
+            current_code.push_back(false);
+        }
+        
         codes[symbol] = {current_code, length};
         
-        current_code++;
+        if (!current_code.empty()) {
+            for (int i = current_code.size() - 1; i >= 0; --i) {
+                if (!current_code[i]) {
+                    current_code[i] = true;
+                    break;
+                } else {
+                    current_code[i] = false;
+                }
+            }
+        }
+        
         prev_length = length;
     }
 
@@ -138,37 +151,26 @@ std::vector<uint8_t> Huffman::decompress(const std::vector<uint8_t>& compressed_
     
     auto codes = generateCanonicalCodes(bit_lengths);
     
-    // Reverse map: string of bits -> symbol
-    // Since bits are read one by one, a binary tree is easier, 
-    // or we can use a hash map of string->symbol or just integers if max length <= 32
-    // Canonical Huffman max length depends on file size and frequencies, 
-    // but typically fits in 32. 
-    std::unordered_map<uint32_t, std::unordered_map<int, uint8_t>> decode_map; // map[length][code] = symbol
+    std::map<std::vector<bool>, uint8_t> decode_map;
     for (const auto& pair : codes) {
-        decode_map[pair.second.length][pair.second.code] = pair.first;
+        decode_map[pair.second.code] = pair.first;
     }
     
     std::vector<uint8_t> decompressed;
     decompressed.reserve(original_size);
     
-    uint32_t current_code = 0;
-    int current_length = 0;
+    std::vector<bool> current_code;
     
     while (decompressed.size() < original_size) {
         bool bit;
         if (!reader.readBit(bit)) break;
         
-        current_code = (current_code << 1) | bit;
-        current_length++;
+        current_code.push_back(bit);
         
-        auto length_it = decode_map.find(current_length);
-        if (length_it != decode_map.end()) {
-            auto code_it = length_it->second.find(current_code);
-            if (code_it != length_it->second.end()) {
-                decompressed.push_back(code_it->second);
-                current_code = 0;
-                current_length = 0;
-            }
+        auto it = decode_map.find(current_code);
+        if (it != decode_map.end()) {
+            decompressed.push_back(it->second);
+            current_code.clear();
         }
     }
     

@@ -15,6 +15,12 @@ void BitWriter::writeBit(bool bit) {
     }
 }
 
+void BitWriter::writeBits(const std::vector<bool>& bits) {
+    for (bool bit : bits) {
+        writeBit(bit);
+    }
+}
+
 void BitWriter::writeBits(uint32_t bits, int num_bits) {
     for (int i = num_bits - 1; i >= 0; --i) {
         writeBit((bits >> i) & 1);

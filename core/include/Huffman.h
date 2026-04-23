@@ -9,7 +9,7 @@
 class Huffman {
 public:
     struct CanonicalCode {
-        uint32_t code;
+        std::vector<bool> code;
         int length;
     };
 
