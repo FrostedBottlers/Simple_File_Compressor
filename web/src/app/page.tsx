@@ -3,27 +3,38 @@
 import { useState } from 'react';
 import { Command } from '@tauri-apps/plugin-shell';
 import { open, save } from '@tauri-apps/plugin-dialog';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FileUp, FolderUp, ArchiveRestore, CheckCircle, XCircle, Loader2, ArrowRight } from 'lucide-react';
 
 export default function Home() {
+  const [mode, setMode] = useState<'compress' | 'extract'>('compress');
+  
   const [filePath, setFilePath] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<{ op: string; path: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const formatSize = (bytes: number) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  const resetState = () => {
+    setFilePath(null);
+    setFileName(null);
+    setResult(null);
+    setError(null);
   };
 
-  const handleSelectFile = async () => {
+  const handleModeChange = (newMode: 'compress' | 'extract') => {
+    if (isLoading) return;
+    setMode(newMode);
+    resetState();
+  };
+
+  const handleSelect = async (isFolder: boolean) => {
     try {
       const selected = await open({
+        directory: isFolder,
         multiple: false,
-        title: 'Select a file or archive to process'
+        title: isFolder ? 'Select a folder to compress' : (mode === 'compress' ? 'Select a file to compress' : 'Select an archive to extract'),
+        filters: mode === 'extract' ? [{ name: 'HuffPack Archive', extensions: ['huff'] }] : undefined
       });
       if (selected && typeof selected === 'string') {
         const name = selected.split(/[\/\\]/).pop() || 'Unknown';
@@ -42,10 +53,8 @@ export default function Home() {
     setIsLoading(true);
     setError(null);
 
-    const isDecompressing = fileName.endsWith('.huff');
-
     try {
-      if (isDecompressing) {
+      if (mode === 'extract') {
         // Output directory selection
         const outDir = await open({
           directory: true,
@@ -69,7 +78,7 @@ export default function Home() {
         // Output file selection
         const outFile = await save({
           filters: [{ name: 'HuffPack Archive', extensions: ['huff'] }],
-          defaultPath: fileName + '.huff'
+          defaultPath: fileName + (fileName.endsWith('.huff') ? '' : '.huff')
         });
         
         if (!outFile) {
@@ -94,103 +103,147 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh] font-sans">
-      <div className="text-center mb-12">
-        <h1 className="text-5xl font-bold tracking-tight mb-4 text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-500 dark:from-white dark:to-gray-400">
-          Compactor & Extractor
-        </h1>
-        <p className="text-lg text-gray-500 max-w-xl mx-auto dark:text-gray-400">
-          Native Desktop Client. Process files instantly using the bundled C++ Canonical Huffman sidecar. Limitless speed and size.
-        </p>
+    <div className="flex flex-col items-center w-full max-w-2xl mx-auto font-sans relative">
+      {/* Floating Segmented Control */}
+      <div className="glass squircle-inner p-1 mb-8 flex items-center relative shadow-lg">
+        <motion.div
+           layoutId="activePill"
+           className="absolute inset-y-1 bg-primary squircle-inner z-0"
+           initial={false}
+           animate={{
+              left: mode === 'compress' ? '4px' : 'calc(50% + 2px)',
+              right: mode === 'compress' ? 'calc(50% + 2px)' : '4px'
+           }}
+           transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+        />
+        <button 
+           onClick={() => handleModeChange('compress')}
+           className={`relative z-10 w-40 py-2.5 text-sm font-medium transition-colors duration-300 ${mode === 'compress' ? 'text-background' : 'text-foreground/70 hover:text-foreground'}`}
+        >
+          Compress
+        </button>
+        <button 
+           onClick={() => handleModeChange('extract')}
+           className={`relative z-10 w-40 py-2.5 text-sm font-medium transition-colors duration-300 ${mode === 'extract' ? 'text-background' : 'text-foreground/70 hover:text-foreground'}`}
+        >
+          Extract
+        </button>
       </div>
 
-      <div className="w-full max-w-2xl">
-        <div className="glass squircle p-10 transition-all duration-300 ease-out border-2 border-transparent relative overflow-hidden group">
-          <div className="flex flex-col items-center justify-center text-center min-h-[200px]">
-             {!filePath ? (
-                <>
-                  <div className="w-16 h-16 rounded-full bg-accent mb-6 flex items-center justify-center transition-transform duration-500 group-hover:scale-110">
-                    <svg className="w-8 h-8 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
-                  </div>
-                  <h3 className="text-xl font-medium mb-2">Ready to compress</h3>
-                  <button 
-                    onClick={handleSelectFile}
-                    className="mt-4 px-8 py-3 bg-primary text-background font-medium squircle-inner hover:opacity-90 transition-opacity"
-                  >
-                    Select File
-                  </button>
-                </>
-             ) : (
-                <div className="w-full relative z-10 animate-in fade-in zoom-in duration-300">
-                  <div className="flex items-center justify-between p-4 bg-accent/50 squircle-inner border border-white/10 shrink-0">
-                    <div className="flex items-center gap-4">
-                       <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-blue-500 to-cyan-400 flex items-center justify-center text-white shrink-0">
-                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                       </div>
-                       <div className="text-left overflow-hidden">
-                          <p className="font-medium truncate max-w-[300px] mb-1">{fileName}</p>
-                          <p className="text-xs text-gray-500 truncate max-w-[300px]">{filePath}</p>
-                       </div>
+      {/* Main Glass Pane */}
+      <div className="w-full glass squircle shadow-2xl p-10 min-h-[420px] flex flex-col relative overflow-hidden bg-white/40 dark:bg-black/40 backdrop-blur-3xl border-white/20 dark:border-white/10">
+        <AnimatePresence mode="popLayout">
+          <motion.div 
+            key={mode + (filePath ? 'file' : 'empty') + (result ? 'res' : '')}
+            initial={{ opacity: 0, y: 10, filter: 'blur(10px)' }}
+            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, y: -10, filter: 'blur(10px)' }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 flex flex-col"
+          >
+            {!filePath ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-white/10 dark:to-white/5 shadow-inner flex items-center justify-center mb-6">
+                  {mode === 'compress' ? (
+                     <ArchiveRestore className="w-8 h-8 text-foreground/70" />
+                  ) : (
+                     <FileUp className="w-8 h-8 text-foreground/70" />
+                  )}
+                </div>
+                <h2 className="text-2xl font-semibold mb-3 tracking-tight">
+                  {mode === 'compress' ? 'Compact your files' : 'Extract an archive'}
+                </h2>
+                <p className="text-foreground/60 mb-8 max-w-sm leading-relaxed">
+                  {mode === 'compress' 
+                    ? 'Select a single file or an entire directory to compress natively with Canonical Huffman algorithms.'
+                    : 'Select a highly dense .huff archive to extract its original file structures safely.'}
+                </p>
+
+                <div className="flex flex-wrap justify-center gap-4">
+                  {mode === 'compress' ? (
+                    <>
+                      <button onClick={() => handleSelect(false)} className="squircle-inner bg-primary text-background px-6 py-3 font-medium hover:opacity-90 transition-opacity flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-105 active:scale-95">
+                        <FileUp className="w-4 h-4" /> Select File
+                      </button>
+                      <button onClick={() => handleSelect(true)} className="squircle-inner bg-white/50 dark:bg-white/5 border border-border px-6 py-3 font-medium hover:bg-white dark:hover:bg-white/10 transition-colors flex items-center gap-2 shadow-sm hover:scale-105 active:scale-95">
+                        <FolderUp className="w-4 h-4" /> Select Folder
+                      </button>
+                    </>
+                  ) : (
+                    <button onClick={() => handleSelect(false)} className="squircle-inner bg-primary text-background px-8 py-3 font-medium hover:opacity-90 transition-opacity flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-105 active:scale-95">
+                      <ArchiveRestore className="w-4 h-4" /> Select Archive
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : result ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center">
+                <motion.div 
+                  initial={{ scale: 0 }} 
+                  animate={{ scale: 1 }} 
+                  transition={{ type: "spring", bounce: 0.5, delay: 0.1 }}
+                  className="w-24 h-24 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center mb-6 shadow-[inset_0_0_20px_rgba(34,197,94,0.2)]"
+                >
+                  <CheckCircle className="w-12 h-12" />
+                </motion.div>
+                <h2 className="text-3xl font-semibold mb-3 tracking-tight">Successfully {result.op}</h2>
+                <p className="text-foreground/50 mb-10 font-mono text-sm max-w-xs truncate px-4 py-2 bg-black/5 dark:bg-white/5 rounded-lg">{result.path}</p>
+                <button onClick={resetState} className="squircle-inner bg-primary text-background px-8 py-3.5 font-medium hover:opacity-90 transition-all hover:scale-105 active:scale-95 shadow-xl shadow-primary/20">
+                  {mode === 'compress' ? 'Compress Another' : 'Extract Another'}
+                </button>
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold mb-6">Verify Details</h2>
+                  <div className="flex items-center justify-between p-4 bg-white/50 dark:bg-black/20 squircle-inner border border-white/40 dark:border-white/10 shadow-sm mb-6 transition-all hover:bg-white/70 dark:hover:bg-black/30">
+                    <div className="flex items-center gap-5 overflow-hidden">
+                      <div className="w-14 h-14 rounded-[14px] bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center text-white shrink-0 shadow-inner">
+                        {mode === 'compress' ? <FileUp className="w-6 h-6"/> : <ArchiveRestore className="w-6 h-6"/>}
+                      </div>
+                      <div className="overflow-hidden text-left">
+                        <h3 className="font-semibold text-lg truncate mb-0.5">{fileName}</h3>
+                        <p className="text-xs text-foreground/50 truncate max-w-[280px] font-mono">{filePath}</p>
+                      </div>
                     </div>
-                    
-                    {!result && (
-                      <button 
-                         onClick={() => { setFilePath(null); setFileName(null); }}
-                         className="p-2 hover:bg-black/10 dark:hover:bg-white/10 rounded-full transition-colors"
-                      >
-                         <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    {!isLoading && (
+                      <button onClick={resetState} className="p-2.5 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors shrink-0 group">
+                        <XCircle className="w-6 h-6 text-foreground/30 group-hover:text-red-500 transition-colors" />
                       </button>
                     )}
                   </div>
-
-                  {!result && (
-                    <button 
-                      onClick={handleProcess}
-                      disabled={isLoading}
-                      className="mt-8 w-full py-4 bg-primary text-background font-medium squircle-inner hover:opacity-90 transition-opacity disabled:opacity-50 relative overflow-hidden"
-                    >
-                      {isLoading ? (
-                        <div className="flex items-center justify-center gap-2">
-                           <svg className="animate-spin h-5 w-5 text-background" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                           Processing...
-                        </div>
-                      ) : fileName?.endsWith('.huff') ? (
-                        'Extract Archive'
-                      ) : (
-                        'Compress File'
-                      )}
-                    </button>
-                  )}
-
-                  {result && (
-                    <div className="mt-8 pt-8 border-t border-white/10 animate-in fade-in slide-in-from-bottom-4 duration-500 text-center">
-                      <div className="w-16 h-16 rounded-full bg-green-500/20 text-green-500 mx-auto mb-4 flex items-center justify-center">
-                         <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                      </div>
-                      <h4 className="text-xl font-medium mb-2">Successfully {result.op}!</h4>
-                      <p className="text-sm text-gray-500 mb-6 truncate px-4">Saved to: {result.path}</p>
-                      
-                      <button 
-                        onClick={() => { setFilePath(null); setFileName(null); setResult(null); }}
-                        className="px-8 py-3 bg-accent font-medium squircle-inner hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
-                      >
-                        Process Another File
-                      </button>
-                    </div>
-                  )}
-
+                  
                   {error && (
-                    <div className="mt-4 p-4 text-sm text-red-500 bg-red-50 dark:bg-red-950/30 squircle-inner overflow-auto max-h-32">
-                      {error}
-                    </div>
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="p-4 bg-red-500/10 border border-red-500/20 squircle-inner text-red-600 dark:text-red-400 text-sm mb-6 overflow-hidden">
+                      <div className="flex gap-3 items-start">
+                        <XCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                        <p className="leading-relaxed break-words">{error}</p>
+                      </div>
+                    </motion.div>
                   )}
                 </div>
-             )}
-          </div>
-        </div>
+
+                <div className="mt-auto pt-4">
+                  <button 
+                    onClick={handleProcess}
+                    disabled={isLoading}
+                    className="w-full relative overflow-hidden group squircle-inner bg-primary text-background py-4 font-semibold disabled:opacity-50 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-primary/20 flex justify-center items-center gap-2 text-lg"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-6 h-6 animate-spin" /> Processing Core
+                      </>
+                    ) : (
+                      <>
+                        {mode === 'compress' ? 'Compact Now' : 'Extract Archive'} <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );
