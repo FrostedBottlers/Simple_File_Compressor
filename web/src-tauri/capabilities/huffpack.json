@@ -9,7 +9,7 @@
       "identifier": "shell:allow-execute",
       "allow": [
         {
-          "name": "../core/huffpack",
+          "name": "../../core/huffpack",
           "sidecar": true
         }
       ]

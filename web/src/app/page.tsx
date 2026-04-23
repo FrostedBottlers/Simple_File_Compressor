@@ -57,7 +57,7 @@ export default function Home() {
            return;
         }
         
-        const cmd = Command.sidecar('../core/huffpack', ['unpack', filePath, outDir as string]);
+        const cmd = Command.sidecar('../../core/huffpack', ['unpack', filePath, outDir as string]);
         const res = await cmd.execute();
         
         if (res.code === 0) {
@@ -77,7 +77,7 @@ export default function Home() {
            return;
         }
 
-        const cmd = Command.sidecar('../core/huffpack', ['pack', outFile, filePath]);
+        const cmd = Command.sidecar('../../core/huffpack', ['pack', outFile, filePath]);
         const res = await cmd.execute();
         
         if (res.code === 0) {
