@@ -14,6 +14,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<{ op: string; path: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [progressText, setProgressText] = useState<string>('');
 
   const resetState = () => {
     setFilePath(null);
@@ -51,6 +52,7 @@ export default function Home() {
   const handleProcess = async () => {
     if (!filePath || !fileName) return;
     setIsLoading(true);
+    setProgressText('Initializing Process...');
     setError(null);
 
     try {
@@ -73,6 +75,7 @@ export default function Home() {
         }
         
         const cmd = Command.sidecar('../../core/huffpack', ['unpack', filePath, outDir as string]);
+        cmd.on('line', line => setProgressText(line));
         const res = await cmd.execute();
         
         if (res.code === 0) {
@@ -105,6 +108,7 @@ export default function Home() {
         }
 
         const cmd = Command.sidecar('../../core/huffpack', ['pack', outFile, filePath]);
+        cmd.on('line', line => setProgressText(line));
         const res = await cmd.execute();
         
         if (res.code === 0) {
@@ -239,6 +243,13 @@ export default function Home() {
                       </div>
                     </motion.div>
                   )}
+                  
+                  {isLoading && progressText && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mb-4 flex flex-col items-center justify-center p-4 bg-primary/5 border border-primary/20 squircle-inner text-primary">
+                       <Loader2 className="w-5 h-5 animate-spin mb-2" />
+                       <p className="text-sm font-semibold animate-pulse">{progressText}</p>
+                    </motion.div>
+                  )}
                 </div>
 
                 <div className="mt-auto pt-4">
@@ -247,11 +258,7 @@ export default function Home() {
                     disabled={isLoading}
                     className="w-full relative overflow-hidden group squircle-inner bg-primary text-background py-4 font-semibold disabled:opacity-50 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-primary/20 flex justify-center items-center gap-2 text-lg"
                   >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="w-6 h-6 animate-spin" /> Processing Core
-                      </>
-                    ) : (
+                    {isLoading ? 'Processing In Background...' : (
                       <>
                         {mode === 'compress' ? 'Compact Now' : 'Extract Archive'} <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
                       </>
