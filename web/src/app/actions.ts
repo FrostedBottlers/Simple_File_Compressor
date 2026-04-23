@@ -29,7 +29,7 @@ export async function compressFile(formData: FormData) {
     await fs.writeFile(inputPath, Buffer.from(arrayBuffer));
 
     // Determine the huffpack binary path (adjust path to core/huffpack)
-    const huffpackPath = path.resolve(process.cwd(), '../../core/huffpack');
+    const huffpackPath = path.resolve(process.cwd(), '../core/huffpack');
 
     // Run the native CLI tool
     await execFileAsync(huffpackPath, ['pack', outputPath, inputPath]);
