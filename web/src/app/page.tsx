@@ -75,7 +75,7 @@ export default function Home() {
         }
         
         const cmd = Command.sidecar('../../core/huffpack', ['unpack', filePath, outDir as string]);
-        cmd.on('line', line => setProgressText(line));
+        cmd.stdout.on('data', line => setProgressText(line));
         const res = await cmd.execute();
         
         if (res.code === 0) {
@@ -108,7 +108,7 @@ export default function Home() {
         }
 
         const cmd = Command.sidecar('../../core/huffpack', ['pack', outFile, filePath]);
-        cmd.on('line', line => setProgressText(line));
+        cmd.stdout.on('data', line => setProgressText(line));
         const res = await cmd.execute();
         
         if (res.code === 0) {
