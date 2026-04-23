@@ -72,7 +72,7 @@ export default function Home() {
         if (res.code === 0) {
            setResult({ op: 'Extracted', path: outDir as string });
         } else {
-           setError('Extraction failed: ' + res.stderr);
+           setError(`Exit Code: ${res.code} | StdErr: ${res.stderr || 'EMPTY'} | StdOut: ${res.stdout || 'EMPTY'}`);
         }
       } else {
         // Output file selection
@@ -92,7 +92,7 @@ export default function Home() {
         if (res.code === 0) {
            setResult({ op: 'Compressed', path: outFile });
         } else {
-           setError('Compression failed: ' + res.stderr);
+           setError(`Exit Code: ${res.code} | StdErr: ${res.stderr || 'EMPTY'} | StdOut: ${res.stdout || 'EMPTY'}`);
         }
       }
     } catch (e: any) {
