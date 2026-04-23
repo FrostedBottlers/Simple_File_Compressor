@@ -157,7 +157,7 @@ export default function Home() {
                             </svg>
                            Processing...
                         </div>
-                      ) : fileName.endsWith('.huff') ? (
+                      ) : fileName?.endsWith('.huff') ? (
                         'Extract Archive'
                       ) : (
                         'Compress File'
