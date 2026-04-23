@@ -1,0 +1,66 @@
+name: Build Tauri App
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: aarch64-apple-darwin
+            binary_name: huffpack-aarch64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            binary_name: huffpack-x86_64-pc-windows-msvc.exe
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build C++ Core Sidecar (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          cd core
+          clang++ -O3 -std=c++17 -I include src/main.cpp src/Huffman.cpp src/BitStream.cpp src/Archiver.cpp -o ${{ matrix.binary_name }}
+          chmod +x ${{ matrix.binary_name }}
+
+      - name: Build C++ Core Sidecar (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cd core
+          mkdir build && cd build
+          cmake ..
+          cmake --build . --config Release
+          mv Release/huffpack.exe ../${{ matrix.binary_name }}
+
+      - name: Install Frontend Dependencies
+        working-directory: web
+        run: npm install
+
+      - name: Build Tauri Desktop App
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: web
+          tagName: v__VERSION__
+          releaseName: "HuffPack v__VERSION__"
+          releaseBody: "Automated native build for macOS and Windows."
+          releaseDraft: true
+          prerelease: false
