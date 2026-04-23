@@ -10,7 +10,8 @@
       "allow": [
         {
           "name": "../../core/huffpack",
-          "sidecar": true
+          "sidecar": true,
+          "args": true
         }
       ]
     },
