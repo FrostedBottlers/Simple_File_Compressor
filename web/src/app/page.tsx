@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { compressFile } from './actions';
+import { compressFile, decompressFile } from './actions';
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
@@ -49,11 +49,13 @@ export default function Home() {
     setIsLoading(true);
     setError(null);
 
+    const isDecompressing = file.name.endsWith('.huff');
+
     try {
       const formData = new FormData();
       formData.append('file', file);
       
-      const res = await compressFile(formData);
+      const res = await (isDecompressing ? decompressFile(formData) : compressFile(formData));
       if (res.success && res.data) {
         setResult({
           filename: res.filename as string,
@@ -62,7 +64,7 @@ export default function Home() {
           newSize: res.size as number,
         });
       } else {
-        setError(res.error || 'Compression failed');
+        setError(res.error || (isDecompressing ? 'Decompression failed' : 'Compression failed'));
       }
     } catch (e: any) {
       setError(e.message || 'Network error');
@@ -83,10 +85,10 @@ export default function Home() {
     <div className="flex flex-col items-center justify-center min-h-[80vh] font-sans">
       <div className="text-center mb-12">
         <h1 className="text-5xl font-bold tracking-tight mb-4 text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-500 dark:from-white dark:to-gray-400">
-          Compress beautifully.
+          Compactor & Extractor
         </h1>
         <p className="text-lg text-gray-500 max-w-xl mx-auto dark:text-gray-400">
-          Drop any file to harness the power of our native C++ Canonical Huffman algorithm. Like WinRAR, but better.
+          Drop any file to compress it, or drop a <b>.huff</b> file to extract it instantly using our native C++ Canonical Huffman algorithm. Like WinRAR, but better.
         </p>
       </div>
 
@@ -151,8 +153,10 @@ export default function Home() {
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                           Packing...
+                           Processing...
                         </div>
+                      ) : file.name.endsWith('.huff') ? (
+                        'Extract Archive'
                       ) : (
                         'Compress File'
                       )}
@@ -181,7 +185,7 @@ export default function Home() {
                             onClick={(e) => { e.stopPropagation(); downloadFile(); }}
                             className="flex-1 py-4 bg-primary text-background font-medium squircle-inner hover:opacity-90 transition-opacity animate-pulse-glow"
                           >
-                            Download Archive
+                            {file.name.endsWith('.huff') ? 'Download Extracted' : 'Download Archive'}
                           </button>
                           <button 
                             onClick={(e) => { e.stopPropagation(); setFile(null); setResult(null); }}
