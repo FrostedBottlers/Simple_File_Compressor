@@ -1,1 +1,4 @@
 .DS_Store
+HuffPack.app/
+core/huffpack*
+!core/src/huffpack*

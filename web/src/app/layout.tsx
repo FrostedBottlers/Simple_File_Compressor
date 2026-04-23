@@ -21,11 +21,15 @@ export default function RootLayout({
               HuffPack
             </div>
             <nav className="text-sm font-medium text-gray-500 hover:text-primary transition-colors cursor-pointer dark:text-gray-400">
-              WinRAR Replacement
+              Native Archiver
             </nav>
           </div>
         </header>
-        <main className="pt-24 pb-12 px-6 max-w-7xl mx-auto">
+        <div className="absolute inset-0 z-[-1] overflow-hidden pointer-events-none">
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/10 blur-[100px]" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-gradient-to-tl from-cyan-500/20 to-blue-500/10 blur-[100px]" />
+        </div>
+        <main className="pt-24 pb-12 px-6 max-w-7xl mx-auto flex-1 flex flex-col justify-center">
           {children}
         </main>
       </body>
